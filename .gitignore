@@ -1,0 +1,58 @@
+# ======================
+# Environment variables
+# ======================
+.env
+.env.*
+!.env.example
+
+# ======================
+# Python cache / compiled
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+
+# ======================
+# Virtual environments
+# ======================
+prod/
+env/
+.venv/
+toolcall/
+Lib/
+Scripts/
+Include/
+
+# ======================
+# Logs & temp files
+# ======================
+*.log
+*.tmp
+
+# ======================
+# IDE / OS files
+# ======================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ======================
+# Database files (if any)
+# ======================
+*.sqlite3
+*.db
+
+# ======================
+# Test / coverage
+# ======================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ======================
+# Build / dist
+# ======================
+build/
+dist/
+*.egg-info/
