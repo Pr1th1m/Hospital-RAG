@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+python-dotenv
+langchain-community
+pinecone
+langchain-ollama
+langchain-pinecone
+ollama
+cohere
+langchain-cohere
