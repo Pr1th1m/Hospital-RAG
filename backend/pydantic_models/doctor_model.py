@@ -4,7 +4,8 @@ from uuid import UUID, uuid4
 
 class Doctor(BaseModel):
     # doctor_id: UUID = Field(default_factory=uuid4)
-    # hospital_id: UUID
+    hospital_id: UUID
+    department_id: UUID
     doctor_name: str
     doctor_speciality: str
     doctor_experience: Optional[int] = Field(None,ge=0)
