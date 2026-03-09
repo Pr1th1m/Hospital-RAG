@@ -1,4 +1,4 @@
-from groq import Groq
+from groq_client import call_with_fallback
 import os
 import json
 from dotenv import load_dotenv
@@ -10,9 +10,6 @@ import cohere
 from system_prompt import system_prompt_hospital,system_prompt_department,system_prompt_doctor,system_prompt_hospital_list,system_prompt_doctor_list
 load_dotenv()
 
-client = Groq(
-    api_key= os.getenv("GROQ_API_KEY")
-)
 co = cohere.ClientV2(
     api_key=os.getenv('COHERE_API_KEY')
 )
@@ -32,19 +29,21 @@ vector_store = PineconeVectorStore(
 )
 
 def transform_text(data,system_prompt):
-    completion = client.chat.completions.create(
-        # model = 'llama-3.3-70b-versatile',
-        model = 'openai/gpt-oss-120b',
-        messages=[
-            {
-                'role':'system',
-                'content': system_prompt
-            },
-            {
-                'role':'user',
-                'content': str(data)
-            }
-        ]
+    completion = call_with_fallback(
+        lambda c: c.chat.completions.create(
+            # model = 'llama-3.3-70b-versatile',
+            model = 'openai/gpt-oss-120b',
+            messages=[
+                {
+                    'role':'system',
+                    'content': system_prompt
+                },
+                {
+                    'role':'user',
+                    'content': str(data)
+                }
+            ]
+        )
     )
     output_text = completion.choices[0].message.content
     json_output = json.loads(output_text)
