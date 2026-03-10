@@ -1,0 +1,22 @@
+# Frontend (Vite + React) — JavaScript project
+# Dependencies are managed via package.json, not pip.
+#
+# To install dependencies:
+#   npm install
+#
+# To run the dev server:
+#   npm run dev
+#
+# To build for production:
+#   npm run build
+#
+# Key dependencies (from package.json):
+#   react ^19.2.0
+#   react-dom ^19.2.0
+#   react-markdown ^10.1.0
+#   react-router-dom ^7.13.1
+#
+# Dev dependencies:
+#   vite ^7.3.1
+#   @vitejs/plugin-react ^5.1.1
+#   eslint ^9.39.1
