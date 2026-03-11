@@ -22,17 +22,22 @@ from pydantic_models.department_model import Department
 from pydantic_models.doctor_model import Doctor
 from pydantic_models.hospital_model import Hospital
 from tavily import TavilyClient
-from vector_database import vector_store
+from vector_database import vector_store,transform_text
+from system_prompt import system_prompt_hospital,system_prompt_department,system_prompt_doctor
 
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
+import traceback
 import uuid
 
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 # Retrieval defaults can be tuned through env without code changes.
@@ -43,6 +48,7 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 # In-memory token store: {token: expiration_utc}
 admin_tokens: Dict[str, datetime] = {}
+
 
 
 def _issue_admin_token() -> str:
@@ -109,6 +115,10 @@ def retrieve_relevant_chunks(query: str):
             return filtered_chunks
 
     return vector_store.similarity_search(query, k=RETRIEVAL_TOP_K)
+
+
+def _has_local_data(chunks) -> bool:
+    return any(getattr(chunk, "page_content", "").strip() for chunk in chunks)
 
 
 def build_grounded_user_query(message: str, content: str) -> str:
@@ -282,9 +292,16 @@ def add_hospital(
     _: str = Depends(verify_admin),
 ):
     try:
-        db.add(HospitalDB(**hospital.model_dump()))
+        hospital_db = HospitalDB(**hospital.model_dump())
+        db.add(hospital_db)
         db.commit()
-        return {"message": "Hospital created successfully"}
+        db.refresh(hospital_db)
+        # ok, err = _try_index(lambda: _index_hospital_in_vector_db(hospital_db))
+        transform_text(hospital,system_prompt_hospital)
+        resp = {"message": "Hospital created successfully"}
+        # if not ok:
+        #     resp["indexing_warning"] = f"Vector store indexing failed: {err}"
+        return resp
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create hospital")
@@ -301,9 +318,23 @@ def add_department(
         raise HTTPException(status_code=404, detail="Hospital not found for provided hospital_id")
 
     try:
-        db.add(DepartmentDB(**department.model_dump()))
+        department_db = DepartmentDB(**department.model_dump())
+        db.add(department_db)
         db.commit()
-        return {"message": "Department created successfully"}
+        db.refresh(department_db)
+        merged_data = {
+            "department": department.model_dump(),
+            "hospital": {
+                "hospital_name": hospital.hospital_name,
+                "hospital_city": hospital.hospital_city,
+                "hospital_area": hospital.hospital_area,
+                "ownership": hospital.ownership,
+                "hospital_type": hospital.hospital_type,
+            },
+        }
+        transform_text(merged_data, system_prompt_department)
+        resp = {"message": "Department created successfully"}
+        return resp
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create department")
@@ -330,12 +361,71 @@ def add_doctor(
         )
 
     try:
-        db.add(DoctorDB(**doctor.model_dump()))
+        doctor_db = DoctorDB(**doctor.model_dump())
+        db.add(doctor_db)
         db.commit()
-        return {"message": "Doctor created successfully"}
+        db.refresh(doctor_db)
+        merged_data = {
+            "doctor": doctor.model_dump(),
+            "hospital": {
+                "hospital_name": hospital.hospital_name,
+                "hospital_city": hospital.hospital_city,
+                "ownership": hospital.ownership,
+                "has_emergency": hospital.emergency,
+            },
+            "department": {
+                "department_name": department.department_name,
+                "icu_support": department.icu_support,
+            },
+        }
+        transform_text(merged_data, system_prompt_doctor)
+        resp = {"message": "Doctor created successfully"}
+        return resp
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to create doctor")
+
+
+@app.post("/admin/reindex_vector_store")
+def reindex_vector_store(db: Session = Depends(get_db), _: str = Depends(verify_admin)):
+    hospitals = db.query(HospitalDB).all()
+    departments = db.query(DepartmentDB).all()
+    doctors = db.query(DoctorDB).all()
+
+    hospitals_by_id = {str(h.hospital_id): h for h in hospitals}
+    departments_by_id = {str(d.department_id): d for d in departments}
+
+    indexed = {"hospitals": 0, "departments": 0, "doctors": 0}
+    errors = []
+
+    for h in hospitals:
+        try:
+            transform_text(h, system_prompt_hospital)
+            indexed["hospitals"] += 1
+        except Exception as e:
+            log.warning("Vector indexing failed for hospital: %s", e)
+            errors.append(f"hospital {getattr(h, 'hospital_name', '?')}: {e}")
+
+    for d in departments:
+        try:
+            transform_text(d, system_prompt_department)
+            indexed["departments"] += 1
+        except Exception as e:
+            log.warning("Vector indexing failed for department: %s", e)
+            errors.append(f"department {getattr(d, 'department_name', '?')}: {e}")
+
+    for doc in doctors:
+        try:
+            transform_text(doc, system_prompt_doctor)
+            indexed["doctors"] += 1
+        except Exception as e:
+            log.warning("Vector indexing failed for doctor: %s", e)
+            errors.append(f"doctor {getattr(doc, 'doctor_name', '?')}: {e}")
+
+    resp = {"message": "Reindex request completed.", "indexed": indexed}
+    if errors:
+        resp["errors"] = errors
+    return resp
 
 
 @app.get("/get_hospitals")
@@ -420,6 +510,13 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         return {"session_id": session_id, "answer": realtime_answer}
 
     chunks = retrieve_relevant_chunks(request.message)
+    if not _has_local_data(chunks):
+        realtime_answer = _build_realtime_answer(request.message)
+        messages.append({"role": "user", "content": request.message.strip()})
+        messages.append({"role": "assistant", "content": realtime_answer})
+        chat_sessions[session_id] = messages
+        return {"session_id": session_id, "answer": realtime_answer}
+
     content = "\n\n".join([c.page_content for c in chunks])
     user_query = build_grounded_user_query(request.message, content)
 
@@ -528,6 +625,21 @@ def chat_stream(request: ChatRequest, db: Session = Depends(get_db)):
         return StreamingResponse(realtime_event_generator(), media_type="text/event-stream")
 
     chunks = retrieve_relevant_chunks(request.message)
+    if not _has_local_data(chunks):
+        realtime_answer = _build_realtime_answer(request.message)
+        messages.append({"role": "user", "content": request.message.strip()})
+        messages.append({"role": "assistant", "content": realtime_answer})
+        chat_sessions[session_id] = messages
+
+        def realtime_fallback_event_generator():
+            words = realtime_answer.split(" ")
+            for i, word in enumerate(words):
+                token = word if i == 0 else " " + word
+                yield f"data: {json.dumps({'token': token})}\\n\\n"
+            yield f"data: {json.dumps({'done': True, 'session_id': session_id})}\\n\\n"
+
+        return StreamingResponse(realtime_fallback_event_generator(), media_type="text/event-stream")
+
     content = "\n\n".join([c.page_content for c in chunks])
     user_query = build_grounded_user_query(request.message, content)
     messages.append({"role": "user", "content": user_query.strip()})
