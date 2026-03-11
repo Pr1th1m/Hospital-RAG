@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminLogin } from '../utils/api';
+import { Shield, LogIn } from 'lucide-react';
 
 export default function AdminLogin() {
     const [password, setPassword] = useState('');
@@ -27,7 +28,7 @@ export default function AdminLogin() {
     return (
         <div className="login-page">
             <div className="card login-card">
-                <div style={{ textAlign: 'center', fontSize: 40, marginBottom: 16 }}></div>
+                <div className="login-icon"><Shield /></div>
                 <h2>Admin Access</h2>
                 <p className="subtitle">Enter your admin password to continue</p>
 
@@ -46,11 +47,11 @@ export default function AdminLogin() {
                         />
                     </div>
                     <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: 8 }}>
-                        {loading ? 'Verifying...' : ' Login'}
+                        <LogIn />
+                        {loading ? 'Verifying...' : 'Login'}
                     </button>
                 </form>
             </div>
         </div>
     );
 }
-

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, Link } from 'react-router-dom';
+import { MessageSquare, Compass, Settings, Sun, Moon, LogIn, Stethoscope, Menu, X } from 'lucide-react';
 
 export default function Navbar({ darkMode, toggleDarkMode }) {
     const [open, setOpen] = useState(false);
@@ -9,31 +10,39 @@ export default function Navbar({ darkMode, toggleDarkMode }) {
     if (location.pathname === '/') return null;
 
     const links = [
-        { to: '/chat', icon: 'CH', label: 'Chat' },
+        { to: '/chat', icon: <MessageSquare />, label: 'Chat' },
         ...(isAdmin
             ? [
-                { to: '/explore', icon: 'EX', label: 'Explore' },
-                { to: '/admin', icon: 'AD', label: 'Admin' },
+                { to: '/explore', icon: <Compass />, label: 'Explore' },
+                { to: '/admin', icon: <Settings />, label: 'Admin' },
             ]
             : []),
     ];
 
     return (
         <>
-            <button className="sidebar-toggle" onClick={() => setOpen(!open)}>
-                {open ? 'Close' : 'Menu'}
+            <button
+                type="button"
+                className="sidebar-toggle"
+                onClick={() => setOpen(!open)}
+                aria-label="Toggle menu"
+                aria-expanded={open}
+                aria-controls="sidebar-nav"
+            >
+                {open ? <X /> : <Menu />}
             </button>
 
             <div
                 className={`sidebar-overlay ${open ? 'visible' : ''}`}
                 onClick={() => setOpen(false)}
+                aria-hidden="true"
             />
 
-            <aside className={`sidebar ${open ? 'open' : ''}`}>
-                <div className="sidebar-logo">
-                    <div className="logo-icon">MA</div>
+            <aside id="sidebar-nav" className={`sidebar ${open ? 'open' : ''}`} aria-label="Main">
+                <Link to="/" className="sidebar-logo" aria-label="MedAssist home" onClick={() => setOpen(false)}>
+                    <div className="logo-icon" aria-hidden="true"><Stethoscope /></div>
                     <h1>MedAssist</h1>
-                </div>
+                </Link>
 
                 <nav className="sidebar-nav">
                     {links.map((link) => (
@@ -50,20 +59,16 @@ export default function Navbar({ darkMode, toggleDarkMode }) {
                 </nav>
 
                 <div className="sidebar-footer">
-                    <button className="nav-link theme-toggle" onClick={toggleDarkMode}>
-                        <span className="nav-icon">{darkMode ? 'LT' : 'DK'}</span>
+                    <button type="button" className="nav-link theme-toggle" onClick={toggleDarkMode}>
+                        <span className="nav-icon">{darkMode ? <Sun /> : <Moon />}</span>
                         {darkMode ? 'Light Mode' : 'Dark Mode'}
                     </button>
                     {!isAdmin && (
                         <NavLink to="/admin/login" className="nav-link" onClick={() => setOpen(false)}>
-                            <span className="nav-icon">IN</span>
+                            <span className="nav-icon"><LogIn /></span>
                             Admin Login
                         </NavLink>
                     )}
-                    <NavLink to="/" className="nav-link" onClick={() => setOpen(false)}>
-                        <span className="nav-icon">HM</span>
-                        Home
-                    </NavLink>
                 </div>
             </aside>
         </>

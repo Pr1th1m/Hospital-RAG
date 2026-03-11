@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function Toast({ message, type = 'success', onClose }) {
     useEffect(() => {
@@ -8,7 +9,7 @@ export default function Toast({ message, type = 'success', onClose }) {
 
     return (
         <div className={`toast toast-${type}`}>
-            <span>{type === 'success' ? 'OK' : 'ERR'}</span>
+            {type === 'success' ? <CheckCircle2 /> : <AlertCircle />}
             {message}
         </div>
     );
@@ -43,4 +44,3 @@ export function useToast() {
 
     return { toasts, addToast, removeToast };
 }
-

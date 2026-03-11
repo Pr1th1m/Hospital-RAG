@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { addHospital, addDepartment, addDoctor, getHospitals, getDepartments } from '../utils/api';
 import { ToastContainer, useToast } from '../components/Toast';
 import { useNavigate } from 'react-router-dom';
+import { Building2, LayoutGrid, UserPlus, LogOut, Plus } from 'lucide-react';
 
 export default function AdminDashboard() {
     const [tab, setTab] = useState('hospital');
@@ -32,26 +33,34 @@ export default function AdminDashboard() {
         navigate('/admin/login');
     };
 
+    const tabItems = [
+        { key: 'hospital', icon: <Building2 />, label: 'Hospital' },
+        { key: 'department', icon: <LayoutGrid />, label: 'Department' },
+        { key: 'doctor', icon: <UserPlus />, label: 'Doctor' },
+    ];
+
     return (
         <div className="admin-container">
             <ToastContainer toasts={toasts} removeToast={removeToast} />
 
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <h1> Admin Dashboard</h1>
+                    <h1>Admin Dashboard</h1>
                     <p>Manage hospitals, departments, and doctors.</p>
                 </div>
-                <button className="btn btn-ghost" onClick={handleLogout}> Logout</button>
+                <button className="btn btn-ghost" onClick={handleLogout}>
+                    <LogOut /> Logout
+                </button>
             </div>
 
             <div className="tabs">
-                {['hospital', 'department', 'doctor'].map((t) => (
+                {tabItems.map((t) => (
                     <button
-                        key={t}
-                        className={`tab ${tab === t ? 'active' : ''}`}
-                        onClick={() => setTab(t)}
+                        key={t.key}
+                        className={`tab ${tab === t.key ? 'active' : ''}`}
+                        onClick={() => setTab(t.key)}
                     >
-                        {t === 'hospital' ? ' Hospital' : t === 'department' ? ' Department' : ' Doctor'}
+                        {t.icon} {t.label}
                     </button>
                 ))}
             </div>
@@ -170,7 +179,8 @@ function HospitalForm({ addToast, onSuccess }) {
                 <label htmlFor="emergency" style={{ textTransform: 'none', fontSize: 14 }}>Has Emergency Services</label>
             </div>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Adding...' : ' Add Hospital'}
+                <Plus />
+                {loading ? 'Adding...' : 'Add Hospital'}
             </button>
         </form>
     );
@@ -217,7 +227,7 @@ function DepartmentForm({ addToast, hospitals, onSuccess }) {
                 <select className="input-field" name="hospital_id" value={form.hospital_id} onChange={handleChange} required>
                     <option value="">Select a hospital...</option>
                     {hospitals.map((h) => (
-                        <option key={h.hospital_id} value={h.hospital_id}>{h.hospital_name}  {h.hospital_city}</option>
+                        <option key={h.hospital_id} value={h.hospital_id}>{h.hospital_name} — {h.hospital_city}</option>
                     ))}
                 </select>
             </div>
@@ -236,7 +246,8 @@ function DepartmentForm({ addToast, hospitals, onSuccess }) {
                 <label htmlFor="icu_support" style={{ textTransform: 'none', fontSize: 14 }}>ICU Support Available</label>
             </div>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Adding...' : ' Add Department'}
+                <Plus />
+                {loading ? 'Adding...' : 'Add Department'}
             </button>
         </form>
     );
@@ -343,9 +354,9 @@ function DoctorForm({ addToast, hospitals, departments }) {
                 </div>
             </div>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Adding...' : ' Add Doctor'}
+                <Plus />
+                {loading ? 'Adding...' : 'Add Doctor'}
             </button>
         </form>
     );
 }
-

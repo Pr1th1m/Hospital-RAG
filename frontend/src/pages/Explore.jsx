@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getHospitals, getDepartments } from '../utils/api';
+import { Building2, LayoutGrid } from 'lucide-react';
 
 export default function Explore() {
     const [tab, setTab] = useState('hospitals');
@@ -31,20 +32,23 @@ export default function Explore() {
     return (
         <div className="page-container">
             <div className="page-header">
-                <h1> Explore Healthcare Data</h1>
+                <h1>Explore Healthcare Data</h1>
                 <p>Browse hospitals, departments, and doctors in the system.</p>
             </div>
 
             <div className="tabs">
-                {['hospitals', 'departments'].map((t) => (
-                    <button
-                        key={t}
-                        className={`tab ${tab === t ? 'active' : ''}`}
-                        onClick={() => setTab(t)}
-                    >
-                        {t === 'hospitals' ? ' Hospitals' : ' Departments'}
-                    </button>
-                ))}
+                <button
+                    className={`tab ${tab === 'hospitals' ? 'active' : ''}`}
+                    onClick={() => setTab('hospitals')}
+                >
+                    <Building2 /> Hospitals
+                </button>
+                <button
+                    className={`tab ${tab === 'departments' ? 'active' : ''}`}
+                    onClick={() => setTab('departments')}
+                >
+                    <LayoutGrid /> Departments
+                </button>
             </div>
 
             {loading ? (
@@ -53,7 +57,7 @@ export default function Explore() {
                 <div className="entity-grid">
                     {tab === 'hospitals' && hospitals.length === 0 && (
                         <div className="empty-state">
-                            <div className="empty-icon"></div>
+                            <div className="empty-icon"><Building2 size={48} strokeWidth={1} /></div>
                             <p>No hospitals found. Add some from the Admin Dashboard.</p>
                         </div>
                     )}
@@ -63,7 +67,7 @@ export default function Explore() {
                             <div key={i} className="card entity-card">
                                 <div className="entity-card-header">
                                     <div className="entity-card-icon">
-                                        
+                                        <Building2 />
                                     </div>
                                     <div>
                                         <h3>{h.hospital_name}</h3>
@@ -94,7 +98,7 @@ export default function Explore() {
                                 )}
                                 <div className="entity-detail">
                                     <span className="label">Emergency</span>
-                                    <span className="value">{h.emergency ? ' Yes' : ' No'}</span>
+                                    <span className="value">{h.emergency ? '✓ Yes' : '✗ No'}</span>
                                 </div>
                                 {h.accreditations && h.accreditations.length > 0 && (
                                     <div style={{ marginTop: 8 }}>
@@ -108,7 +112,7 @@ export default function Explore() {
 
                     {tab === 'departments' && departments.length === 0 && (
                         <div className="empty-state">
-                            <div className="empty-icon"></div>
+                            <div className="empty-icon"><LayoutGrid size={48} strokeWidth={1} /></div>
                             <p>No departments found. Add some from the Admin Dashboard.</p>
                         </div>
                     )}
@@ -118,7 +122,7 @@ export default function Explore() {
                             <div key={i} className="card entity-card">
                                 <div className="entity-card-header">
                                     <div className="entity-card-icon">
-                                        
+                                        <LayoutGrid />
                                     </div>
                                     <div>
                                         <h3>{d.department_name}</h3>
@@ -126,7 +130,7 @@ export default function Explore() {
                                 </div>
                                 <div className="entity-detail">
                                     <span className="label">ICU Support</span>
-                                    <span className="value">{d.icu_support ? ' Yes' : ' No'}</span>
+                                    <span className="value">{d.icu_support ? '✓ Yes' : '✗ No'}</span>
                                 </div>
                                 {d.services && d.services.length > 0 && (
                                     <div style={{ marginTop: 8 }}>
@@ -142,4 +146,3 @@ export default function Explore() {
         </div>
     );
 }
-

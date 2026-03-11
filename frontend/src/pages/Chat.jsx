@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { transcribeAudio } from '../utils/api';
+import { Bot, User, Stethoscope, Building2, UserCog, LayoutGrid, Siren, ThumbsUp, ThumbsDown, Copy, Check } from 'lucide-react';
 
 export default function Chat({ messages, loading, onSend, onNewChat, inputRef }) {
     const [input, setInput] = useState('');
@@ -89,17 +90,17 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
     };
 
     const suggestions = [
-        { icon: 'H', text: 'Find hospitals near me' },
-        { icon: 'D', text: 'Search for cardiologists' },
-        { icon: 'DP', text: 'Which departments does AIIMS have?' },
-        { icon: 'EM', text: 'Best hospitals for emergency care' },
+        { icon: <Building2 />, text: 'Find hospitals near me' },
+        { icon: <UserCog />, text: 'Search for cardiologists' },
+        { icon: <LayoutGrid />, text: 'Which departments does AIIMS have?' },
+        { icon: <Siren />, text: 'Best hospitals for emergency care' },
     ];
 
     return (
         <div className="chat-container">
             <div className="chat-header">
                 <div className="chat-header-left">
-                    <div className="chat-header-avatar">MA</div>
+                    <div className="chat-header-avatar"><Bot /></div>
                     <div className="chat-header-info">
                         <h2>MedAssist AI</h2>
                         <div className="chat-header-status">
@@ -116,7 +117,7 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
             <div className="chat-messages">
                 {messages.length === 0 && !loading ? (
                     <div className="welcome-message">
-                        <div className="welcome-icon">MA</div>
+                        <div className="welcome-icon"><Stethoscope /></div>
                         <h3>Welcome to MedAssist AI</h3>
                         <p>
                             I can help you find hospitals, doctors, and departments.
@@ -135,7 +136,9 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
                     <>
                         {messages.map((msg, i) => (
                             <div key={i} className={`message message-${msg.role === 'user' ? 'user' : 'bot'}`}>
-                                <div className="message-avatar">{msg.role === 'user' ? 'You' : 'MA'}</div>
+                                <div className="message-avatar">
+                                    {msg.role === 'user' ? <User /> : <Bot />}
+                                </div>
                                 <div className="message-bubble-wrapper">
                                     <div className="message-bubble">
                                         {msg.role === 'user' ? (
@@ -151,22 +154,22 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
                                         <span className="message-time">{formatTime()}</span>
                                         {msg.role === 'bot' && !msg.streaming && msg.content && (
                                             <>
-                                                <button className="copy-btn" onClick={() => handleCopy(msg.content, i)}>
-                                                    {copiedIdx === i ? 'Copied' : 'Copy'}
+                                                <button className="copy-btn" onClick={() => handleCopy(msg.content, i)} title="Copy">
+                                                    {copiedIdx === i ? <Check /> : <Copy />}
                                                 </button>
                                                 <button
                                                     className={`reaction-btn ${reactions[i] === 'up' ? 'active' : ''}`}
                                                     onClick={() => handleReaction(i, 'up')}
                                                     title="Helpful"
                                                 >
-                                                    Helpful
+                                                    <ThumbsUp />
                                                 </button>
                                                 <button
                                                     className={`reaction-btn ${reactions[i] === 'down' ? 'active' : ''}`}
                                                     onClick={() => handleReaction(i, 'down')}
                                                     title="Not helpful"
                                                 >
-                                                    Not Helpful
+                                                    <ThumbsDown />
                                                 </button>
                                             </>
                                         )}
@@ -177,7 +180,7 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
 
                         {loading && messages[messages.length - 1]?.role !== 'bot' && (
                             <div className="message message-bot">
-                                <div className="message-avatar">MA</div>
+                                <div className="message-avatar"><Bot /></div>
                                 <div className="message-bubble-wrapper">
                                     <div className="message-bubble">
                                         <div className="typing-indicator">
@@ -242,4 +245,3 @@ export default function Chat({ messages, loading, onSend, onNewChat, inputRef })
         </div>
     );
 }
-
