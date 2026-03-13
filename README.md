@@ -1,20 +1,20 @@
-# Product-RAG
+# MedRAG
 
-A Retrieval-Augmented Generation (RAG) system for healthcare information management. It combines a FastAPI backend, a React (Vite) frontend, and a Pinecone vector database to enable intelligent natural-language querying of hospitals, departments, and doctors.
+A full-stack Retrieval-Augmented Generation (RAG) system for healthcare information. It combines a FastAPI backend, a React (Vite) frontend, and Pinecone vector search to enable intelligent natural-language querying of hospitals, departments, and doctors.
 
 ## 🏗️ Architecture
 
 ```
 User ──► React Frontend ──► FastAPI Backend ──► Groq LLM (GPT-OSS-120B)
                                    │                    │
-                                   ├── SQLAlchemy DB     │
+                                   ├── PostgreSQL (SQLAlchemy)
                                    └── Pinecone VectorDB ◄── Cohere Embeddings (v4.0)
 ```
 
 **Data flow on write:**
 1. Admin adds a hospital / department / doctor via the API.
-2. The entity is saved to the relational DB (SQLAlchemy).
-3. The entity data (merged with related entities for context) is sent to the LLM via `transform_text`.
+2. The entity is saved to PostgreSQL via SQLAlchemy.
+3. Entity data (merged with related entities for context) is sent to the LLM via `transform_text`.
 4. The LLM generates structured `page_content` + `metadata` JSON.
 5. The result is embedded with Cohere and stored in Pinecone.
 
@@ -26,7 +26,7 @@ User ──► React Frontend ──► FastAPI Backend ──► Groq LLM (GPT-
 
 ## 🚀 Features
 
-- **LLM-Powered Vector Indexing** — Uses system prompts + LLM to generate rich `page_content` and `metadata` for each entity before storing in Vector DB
+- **LLM-Powered Vector Indexing** — Uses system prompts + LLM to generate rich `page_content` and `metadata` for each entity before storing in Pinecone
 - **Streaming Chat** — Real-time SSE streaming responses via `/chat/stream`
 - **Web Search Fallback** — Tavily-powered web search for real-time queries (weather, news, etc.)
 - **Admin Dashboard** — Token-based admin auth with CRUD for hospitals, departments, doctors
@@ -34,51 +34,65 @@ User ──► React Frontend ──► FastAPI Backend ──► Groq LLM (GPT-
 - **City Hospital Lookup** — Direct DB lookup for "hospitals in \<city\>" style queries
 - **Voice Input** — Whisper-powered audio transcription endpoint
 - **API Key Rotation** — Automatic Groq API key fallback on rate limits
-- **Docker Support** — `docker-compose.yml` for containerized deployment
+- **Docker Support** — `docker-compose.yml` with PostgreSQL + backend containerization
 
 ## 📁 Project Structure
 
 ```
-Product-Rag/
+MedRAG/
 ├── backend/
-│   ├── database_models/          # SQLAlchemy ORM models
+│   ├── routes/                    # FastAPI route handlers
+│   │   ├── admin.py               # Login + reindex vector store
+│   │   ├── chat.py                # /chat and /chat/stream endpoints
+│   │   ├── hospitals.py           # Hospital CRUD
+│   │   ├── departments.py         # Department CRUD
+│   │   ├── doctors.py             # Doctor CRUD
+│   │   └── health.py              # Health check endpoint
+│   ├── services/                  # Business logic layer
+│   │   ├── chat_service.py        # Chat orchestration, streaming, tool calls
+│   │   ├── retrieval.py           # Entity inference + Pinecone similarity search
+│   │   ├── web_search.py          # Tavily web search wrapper
+│   │   └── admin.py               # Token issuing + verification
+│   ├── database_models/           # SQLAlchemy ORM models
 │   │   ├── base.py
 │   │   ├── database_connection.py
 │   │   ├── hospital_database_model.py
 │   │   ├── department_database_model.py
 │   │   └── doctor_database_model.py
-│   ├── pydantic_models/          # Request/response validation
+│   ├── pydantic_models/           # Request/response validation
 │   │   ├── hospital_model.py
 │   │   ├── department_model.py
 │   │   ├── doctor_model.py
 │   │   └── chatmodel.py
-│   ├── main.py                   # FastAPI application & routes
-│   ├── vector_database.py        # LLM transform + Pinecone indexing
-│   ├── system_prompt.py          # System prompts for LLM data transformation
-│   ├── groq_client.py            # Groq client with API key rotation
-│   ├── app.py                    # CLI chat interface + system prompt
+│   ├── main.py                    # App entry point, CORS, router mounting
+│   ├── config.py                  # Centralized env vars and constants
+│   ├── vector_database.py         # LLM transform + Pinecone indexing
+│   ├── system_prompt.py           # System prompts for LLM data transformation
+│   ├── groq_client.py             # Groq client with API key rotation
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── .env
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Landing.jsx       # Landing page
-│   │   │   ├── Chat.jsx          # Chat interface with streaming
-│   │   │   ├── Explore.jsx       # Browse hospitals/departments/doctors
-│   │   │   ├── AdminLogin.jsx    # Admin authentication
+│   │   │   ├── Landing.jsx        # Landing page
+│   │   │   ├── Chat.jsx           # Chat interface with streaming
+│   │   │   ├── Explore.jsx        # Browse hospitals/departments/doctors
+│   │   │   ├── AdminLogin.jsx     # Admin authentication
 │   │   │   └── AdminDashboard.jsx # CRUD management panel
 │   │   ├── components/
 │   │   │   ├── Navbar.jsx
 │   │   │   ├── ProtectedRoute.jsx
 │   │   │   └── Toast.jsx
+│   │   ├── utils/
+│   │   │   └── api.js             # Centralized API client
 │   │   ├── App.jsx
 │   │   ├── main.jsx
 │   │   └── index.css
 │   └── package.json
-├── docker-compose.yml
-├── RAG/                          # Standalone RAG scripts
-├── trial-rag/                    # Experimental RAG scripts
+├── docker-compose.yml             # PostgreSQL + backend orchestration
+├── AGENTS.md
+├── CLAUDE.md
 └── README.md
 ```
 
@@ -103,14 +117,17 @@ pip install -r requirements.txt
 Create a `.env` file in `/backend`:
 ```env
 GROQ_API_KEY=your_groq_api_key
-GROQ_API_KEY_BACKUP=your_backup_groq_key     # optional, for rate-limit fallback
+GROQ_API_KEY_BACKUP=your_backup_groq_key           # optional, for rate-limit fallback
 COHERE_API_KEY=your_cohere_api_key
 PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_INDEX_NAME=your_index_name
 PINECONE_INDEX_NAME1=your_second_index_name
 PINECONE_INDEX_NAME2=your_third_index_name
 ADMIN_PASSWORD=your_admin_password
-TAVILY_API_KEY=your_tavily_api_key            # optional, for web search
+TAVILY_API_KEY=your_tavily_api_key                  # optional, for web search
+DB_URL=postgresql://user:pass@localhost:5432/dbname  # optional, defaults to SQLite
+RETRIEVAL_TOP_K=8                                   # optional, default 8
+ADMIN_TOKEN_TTL_MINUTES=120                         # optional, default 120
 ```
 
 ### Frontend Setup
@@ -125,6 +142,7 @@ npm install
 ```bash
 docker compose up --build
 ```
+This starts PostgreSQL and the backend automatically. The frontend must be run separately with `npm run dev`.
 
 ## 🚦 Usage
 
@@ -149,7 +167,7 @@ UI available at `http://localhost:5173`
 ### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/admin/login` | Admin login, returns JWT-style token |
+| `POST` | `/admin/login` | Admin login, returns bearer token |
 
 ### Hospital Management
 | Method | Endpoint | Auth | Description |
@@ -184,26 +202,29 @@ UI available at `http://localhost:5173`
 
 ## 🔧 Core Components
 
+### Routes (`routes/`)
+Thin FastAPI route handlers that delegate to services. Each file owns a single domain: `chat.py`, `hospitals.py`, `departments.py`, `doctors.py`, `admin.py`, `health.py`.
+
+### Services (`services/`)
+- **`chat_service.py`** — Orchestrates the full chat flow: city-hospital shortcuts, real-time web queries, RAG retrieval, LLM tool calling, and SSE streaming
+- **`retrieval.py`** — Entity-type inference from queries, filtered Pinecone similarity search, and grounded prompt building
+- **`web_search.py`** — Tavily web search wrapper for real-time queries
+- **`admin.py`** — Token issuing and bearer token verification
+
+### Config (`config.py`)
+Centralized configuration loading all env vars (`RETRIEVAL_TOP_K`, `ADMIN_TOKEN_TTL_MINUTES`, `ADMIN_PASSWORD`, `TAVILY_API_KEY`) in one place.
+
 ### Vector Indexing Pipeline (`vector_database.py`)
 - `transform_text(data, system_prompt)` — Sends entity data to the LLM with a system prompt, parses the JSON response, and stores it in Pinecone
 - `add_json_to_vector_database(json_output)` — Handles both single objects and arrays from LLM output
 - Uses **Cohere embed-v4.0** embeddings via `PineconeVectorStore`
 
-### System Prompts (`system_prompt.py`)
-- `system_prompt_hospital` — Generates hospital page_content + metadata
-- `system_prompt_department` — Generates department page_content + metadata (with hospital context)
-- `system_prompt_doctor` — Generates doctor page_content + metadata (with hospital + department context)
-- `system_prompt_*_list` — Batch variants for processing lists of entities
-
 ### Groq Client (`groq_client.py`)
 - `call_with_fallback(api_call)` — Executes API calls with automatic key rotation on rate limits
-- Supports primary + backup API keys
+- Supports primary + backup API keys with configurable retry delay
 
-### Chat Logic (`main.py`)
-- **Entity-type inference** — Detects if query is about hospitals, departments, or doctors for filtered search
-- **City hospital lookup** — Direct DB query for "hospitals in \<city\>" patterns
-- **Web search detection** — Routes real-time queries (weather, news) to Tavily
-- **Tool calling** — LLM can invoke `websearch` tool for live data
+### Frontend (`frontend/src/utils/api.js`)
+Centralized API client with bearer token injection, configurable base URL via `VITE_API_URL` env var.
 
 ## 🧠 LLM & Models
 
@@ -228,6 +249,7 @@ UI available at `http://localhost:5173`
 | `fastapi` | Web framework |
 | `uvicorn` | ASGI server |
 | `sqlalchemy` | ORM |
+| `psycopg2-binary` | PostgreSQL driver |
 | `pydantic` | Data validation |
 | `groq` | LLM API client |
 | `langchain-pinecone` | Vector store |
@@ -236,6 +258,7 @@ UI available at `http://localhost:5173`
 | `pinecone` | Vector database |
 | `tavily-python` | Web search |
 | `python-dotenv` | Env management |
+| `faker` | Test data generation |
 
 ## 📝 Example Queries
 
