@@ -12,3 +12,4 @@ langchain-community
 langchain-cohere
 langchain-pinecone
 faker
+psycopg2-binary

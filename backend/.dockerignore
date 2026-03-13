@@ -9,6 +9,7 @@ __pycache__/
 venv/
 .venv/
 env/
+prod/
 
 # Environment secrets — pass these at runtime, never bake into image
 .env
