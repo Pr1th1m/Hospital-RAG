@@ -22,6 +22,7 @@ toolcall/
 Lib/
 Scripts/
 Include/
+node_modules/
 
 # ======================
 # Logs & temp files
